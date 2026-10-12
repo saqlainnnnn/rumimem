@@ -1,0 +1,24 @@
+seed: 42
+experiment: synthetic_delayed_recall_baseline
+
+memory:
+  input_dim: 32
+  key_dim: 16
+  value_dim: 16
+  hidden_dim: 64
+  num_layers: 2
+  update_rule: titans_sequential_reference
+  momentum: true
+  adaptive_forgetting: true
+
+training:
+  batch_size: 16
+  learning_rate: 0.001
+  max_steps: 1000
+  checkpoint_every_steps: 100
+
+synthetic_task:
+  num_users: 8
+  facts_per_user: 16
+  distractor_sessions: 4
+  queries_per_episode: 8
