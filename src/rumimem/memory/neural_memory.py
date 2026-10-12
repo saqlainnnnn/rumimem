@@ -241,7 +241,9 @@ class ProjectedNeuralMemory(nn.Module):
     ) -> Tensor:
         """Project hidden states to queries and retrieve memory values."""
         self._validate_hidden(hidden_queries, "hidden_queries")
-        query = self.query_proj(hidden_queries)
+        query = torch.nn.functional.normalize(
+            self.query_proj(hidden_queries).float(), p=2, dim=-1
+        )
         return self.memory.read(state.memory, query)
 
     def write(
@@ -261,8 +263,12 @@ class ProjectedNeuralMemory(nn.Module):
         if hidden_keys.dtype != hidden_values.dtype:
             raise ValueError("hidden_keys and hidden_values must share a dtype.")
 
-        keys = self.key_proj(hidden_keys)
-        values = self.value_proj(hidden_values)
+        keys = torch.nn.functional.normalize(
+            self.key_proj(hidden_keys).float(), p=2, dim=-1
+        )
+        values = torch.nn.functional.normalize(
+            self.value_proj(hidden_values).float(), p=2, dim=-1
+        )
 
         updated_memory = self.memory.write(state.memory, keys, values)
         return ProjectedMemoryState(memory=updated_memory)

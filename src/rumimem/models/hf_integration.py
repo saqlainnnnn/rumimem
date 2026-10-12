@@ -112,15 +112,13 @@ class RumiMemCausalLM(nn.Module):
 
         return captured[0][0]
 
-    def write_memory(
-        self,
-        state: ProjectedMemoryState,
-        input_ids: Tensor,
-        attention_mask: Tensor | None = None,
-        chunk_size: int = 16,
-    ) -> ProjectedMemoryState:
-        """Explicitly write a support passage into the persistent memory."""
+    def write_memory(self, state, input_ids, attention_mask=None, chunk_size=16):
         hidden = self.encode_for_memory(input_ids, attention_mask)
+        projection = self.memory.key_proj
+        hidden = hidden.to(
+            device=projection.weight.device,
+            dtype=projection.weight.dtype,
+        )
         return self.memory.condition(
             state,
             hidden_keys=hidden,
@@ -158,8 +156,17 @@ class RumiMemCausalLM(nn.Module):
                 )
 
             # One memory stream; each token acts as a read query.
-            retrieved = self.memory.read(memory_state, output[0])
-            residual = self.fusion(retrieved).unsqueeze(0)
+            memory_dtype = self.memory.query_proj.weight.dtype
+            memory_device = self.memory.query_proj.weight.device
+            hidden = output[0].to(
+                device=memory_device,
+                dtype=memory_dtype,
+            )
+            retrieved = self.memory.read(memory_state, hidden)
+            residual = self.fusion(retrieved).to(
+                dtype=output.dtype,
+                device=output.device,
+            ).unsqueeze(0)
             return output + torch.sigmoid(self.gate_logit) * residual
 
         layer = self.base_model.model.layers[self.layer_index]
